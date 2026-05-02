@@ -1,3 +1,6 @@
+# ============================================================================
+# CloudFormation template for the TTC streaming pipeline
+# ============================================================================
 AWSTemplateFormatVersion: "2010-09-09"
 Description: TTC Real-Time Streaming Pipeline
 
