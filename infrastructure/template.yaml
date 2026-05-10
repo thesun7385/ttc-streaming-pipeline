@@ -1,3 +1,17 @@
+# ============================================================================
+# CloudFormation template for the TTC streaming pipeline
+# ============================================================================
+
+# Deploy:
+# aws cloudformation deploy \
+#   --template-file infrastructure/template.yaml \
+#   --stack-name ttc-streaming-pipeline \
+#   --region us-east-1 \ # change based on your region
+#   --parameter-overrides AccountId=YOUR_ACCOUNT_ID
+
+# Teardown after use
+# aws cloudformation delete-stack --stack-name ttc-streaming-pipeline
+
 AWSTemplateFormatVersion: "2010-09-09"
 Description: TTC Real-Time Streaming Pipeline
 
@@ -7,20 +21,25 @@ Parameters:
     Description: Your AWS account ID
 
 Resources:
-
   # ── Kinesis Data Stream ──────────────────────────
-  TTCVehicleStream:
-    Type: AWS::Kinesis::Stream
+  TTCVehiclePositionsStream:
+    Type: AWS::Kinesis::Stream # Raw vehicle position records
     Properties:
       Name: ttc-vehicle-positions
-      ShardCount: 1         # provisioned, cheapest for low volume
+      ShardCount: 1
+
+  TTCVehicleEnrichedStream:
+    Type: AWS::Kinesis::Stream # Enriched vehicle position records
+    Properties:
+      Name: ttc-vehicle-enriched
+      ShardCount: 1
 
   # ── DynamoDB — vehicle state cache ──────────────
   VehicleStateTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: ttc-vehicle-state
-      BillingMode: PAY_PER_REQUEST   # free tier, no provisioned cost
+      BillingMode: PAY_PER_REQUEST # free tier, no provisioned cost
       AttributeDefinitions:
         - AttributeName: vehicle_id
           AttributeType: S
@@ -41,9 +60,19 @@ Resources:
       TopicName: ttc-idle-alerts
 
 Outputs:
-  StreamName:
-    Value: !Ref TTCVehicleStream
-    Description: Kinesis stream name
+  CloudFormationStackName:
+    Value: !Ref AWS::StackName
+    Description: Name of the CloudFormation stack
+
+  # Raw data
+  PositionsStreamName:
+    Value: !Ref TTCVehiclePositionsStream
+    Description: Kinesis raw positions stream name
+
+  # Enriched
+  EnrichedStreamName:
+    Value: !Ref TTCVehicleEnrichedStream
+    Description: Kinesis enriched stream name
 
   TableName:
     Value: !Ref VehicleStateTable
@@ -56,14 +85,3 @@ Outputs:
   SNSTopicArn:
     Value: !Ref IdleAlertTopic
     Description: SNS topic ARN for idle alerts
-
-
-# Deploy the stack:
-# aws cloudformation deploy \
-#   --template-file infrastructure/template.yaml \
-#   --stack-name ttc-streaming-pipeline \
-#   --region us-east-1 \
-#   --parameter-overrides AccountId=YOUR_ACCOUNT_ID
-
-# Teardown:
-# aws cloudformation delete-stack --stack-name ttc-streaming-pipeline
